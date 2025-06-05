@@ -81,6 +81,25 @@
         }
         .hairdresser-radio-label.selected img {
             border-color: #6366f1; /* border-indigo-500 */
+            animation: spinOnce 0.6s ease-in-out;
+        }
+
+        .hairdresser-radio-label.selected::after {
+            content: "\2702"; /* emoji ciseaux */
+            font-size: 1.25rem;
+            margin-left: auto;
+            animation: scissorsMove 0.6s ease-in-out;
+        }
+
+        @keyframes spinOnce {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        @keyframes scissorsMove {
+            0% { opacity: 0; transform: rotate(0deg); }
+            50% { opacity: 1; transform: rotate(-20deg); }
+            100% { opacity: 0; transform: rotate(20deg); }
         }
         /* Style pour les boutons de navigation de semaine */
         .nav-button {
