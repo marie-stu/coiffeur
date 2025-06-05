@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Réservation Coiffure</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Style pour s'assurer que le corps prend toute la hauteur et pour la police Inter */
+        body {
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+            background-color: #f7fafc; /* gray-100 */
+        }
+        /* Style pour les boutons de slot pour une meilleure visibilité */
+        .slot-button {
+            transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+        }
+        .slot-available {
+            background-color: #4ade80; /* green-400 */
+            color: white;
+        }
+        .slot-available:hover {
+            background-color: #22c55e; /* green-500 */
+        }
+        .slot-booked {
+            background-color: #f87171; /* red-400 */
+            color: white;
+            cursor: not-allowed;
+        }
+        .slot-past {
+            background-color: #d1d5db; /* gray-300 */
+            color: #6b7280; /* gray-500 */
+            cursor: not-allowed;
+        }
+        .slot-unavailable {
+            background-color: #e5e7eb; /* gray-200 */
+            color: #6b7280; /* gray-500 */
+            cursor: not-allowed;
+        }
+        .slot-disabled-selection {
+             background-color: #f3f4f6; /* gray-100 */
+             color: #9ca3af; /* gray-400 */
+             cursor: not-allowed;
+        }
+        /* Styles pour les boutons radio des coiffeurs */
+        .hairdresser-radio-label {
+            display: flex;
+            align-items: center;
+            padding: 0.75rem; /* p-3 */
+            border: 1px solid #e5e7eb; /* border-gray-200 */
+            border-radius: 0.5rem; /* rounded-lg */
+            margin-bottom: 0.5rem; /* mb-2 */
+            cursor: pointer;
+            transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        }
+        .hairdresser-radio-label:hover {
+            border-color: #a5b4fc; /* hover:border-indigo-300 */
+        }
+        .hairdresser-radio-label input[type="radio"] {
+            margin-right: 0.75rem; /* mr-3 */
+            height: 1.25rem; /* h-5 */
+            width: 1.25rem; /* w-5 */
+            accent-color: #6366f1; /* indigo-600 */
+        }
+        .hairdresser-radio-label img {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            margin-right: 0.75rem; /* mr-3 */
+            object-fit: cover;
+            border: 2px solid transparent;
+        }
+        .hairdresser-radio-label.selected {
+            border-color: #6366f1; /* border-indigo-500 */
+            box-shadow: 0 0 0 2px #a5b4fc; /* ring-2 ring-indigo-300 */
+        }
+        .hairdresser-radio-label.selected img {
+            border-color: #6366f1; /* border-indigo-500 */
+        }
+        /* Style pour les boutons de navigation de semaine */
+        .nav-button {
+            background-color: #4f46e5; /* indigo-600 */
+            color: white;
+            padding: 0.5rem 1rem; /* py-2 px-4 */
+            border-radius: 0.375rem; /* rounded-md */
+            font-weight: 500; /* font-medium */
+            transition: background-color 0.2s ease-in-out;
+        }
+        .nav-button:hover:not(:disabled) {
+            background-color: #4338ca; /* indigo-700 */
+        }
+        .nav-button:disabled {
+            background-color: #9ca3af; /* gray-400 */
+            cursor: not-allowed;
+        }
+    </style>
+     <!-- Importation de la police Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="bg-gray-100">
+
+    <div class="container mx-auto p-4 md:p-8">
+        <header class="mb-8 text-center">
+            <h1 class="text-4xl font-bold text-gray-800">Réservez Votre Créneau</h1>
+            <p class="text-gray-600 mt-2">Choisissez votre coiffeur et l'horaire qui vous convient.</p>
+        </header>
+
+        <div class="bg-white p-6 rounded-xl shadow-xl mb-8">
+            <h2 class="block text-lg font-semibold text-gray-700 mb-3">Choisir un coiffeur/une coiffeuse :</h2>
+            <div id="hairdresserRadioContainer" class="space-y-3">
+                <!-- Les boutons radio seront insérés ici par JavaScript -->
+            </div>
+        </div>
+
+        <div class="flex justify-between items-center mb-4">
+            <button id="prevWeekBtn" class="nav-button">&lt; Sem. Précédente</button>
+            <h3 id="currentWeekDisplay" class="text-lg font-semibold text-gray-700 text-center"></h3>
+            <button id="nextWeekBtn" class="nav-button">Sem. Suivante &gt;</button>
+        </div>
+
+        <div id="calendar-container" class="bg-white rounded-xl shadow-xl overflow-x-auto">
+            <p class="p-6 text-center text-gray-500">Veuillez sélectionner un coiffeur pour afficher les disponibilités.</p>
+        </div>
+
+        <div id="messageArea" class="mt-6 text-center"></div>
+
+        <!-- Modale de Confirmation de Réservation -->
+        <div id="bookingModal" class="fixed z-50 inset-0 overflow-y-auto hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+            <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+                <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true"></div>
+                <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+                <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+                    <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                        <div class="sm:flex sm:items-start">
+                            <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-indigo-100 sm:mx-0 sm:h-10 sm:w-10">
+                                <svg class="h-6 w-6 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                </svg>
+                            </div>
+                            <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
+                                <h3 class="text-xl leading-6 font-semibold text-gray-900" id="modal-title">Confirmation de réservation</h3>
+                                <div class="mt-3">
+                                    <p class="text-sm text-gray-600" id="modalText">Êtes-vous sûr de vouloir réserver ce créneau ?</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                        <button type="button" id="confirmBookingBtn" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:ml-3 sm:w-auto sm:text-sm transition duration-150 ease-in-out">
+                            Confirmer
+                        </button>
+                        <button type="button" id="cancelBookingBtn" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-400 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm transition duration-150 ease-in-out">
+                            Annuler
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Données des coiffeurs et leurs horaires
+        const hairdressers = [
+            {
+                id: 1,
+                name: "Sophie Dubois",
+                imageUrl: "https://placehold.co/50x50/E0E0E0/757575?text=SD&font=Inter", // Placeholder image
+                workingHours: [ // dayOfWeek: 0 = Dimanche, 1 = Lundi, ...
+                    { dayOfWeek: 1, startTime: "09:00", endTime: "17:00" },
+                    { dayOfWeek: 2, startTime: "09:00", endTime: "17:00" },
+                    { dayOfWeek: 3, startTime: "09:00", endTime: "13:00" },
+                    { dayOfWeek: 4, startTime: "12:00", endTime: "18:00" },
+                    { dayOfWeek: 5, startTime: "09:00", endTime: "17:00" },
+                ]
+            },
+            {
+                id: 2,
+                name: "Lucas Martin",
+                imageUrl: "https://placehold.co/50x50/D1C4E9/4527A0?text=LM&font=Inter",
+                workingHours: [
+                    { dayOfWeek: 2, startTime: "10:00", endTime: "18:00" },
+                    { dayOfWeek: 3, startTime: "10:00", endTime: "18:00" },
+                    { dayOfWeek: 4, startTime: "10:00", endTime: "18:00" },
+                    { dayOfWeek: 5, startTime: "10:00", endTime: "16:00" },
+                    { dayOfWeek: 6, startTime: "09:00", endTime: "14:00" },
+                ]
+            },
+            {
+                id: 3,
+                name: "Chloé Petit",
+                imageUrl: "https://placehold.co/50x50/C8E6C9/2E7D32?text=CP&font=Inter",
+                workingHours: [
+                    { dayOfWeek: 1, startTime: "08:00", endTime: "16:00" },
+                    { dayOfWeek: 2, startTime: "08:00", endTime: "16:00" },
+                    { dayOfWeek: 3, startTime: "08:00", endTime: "16:00" },
+                    { dayOfWeek: 4, startTime: "08:00", endTime: "16:00" },
+                    { dayOfWeek: 5, startTime: "08:00", endTime: "12:00" },
+                ]
+            }
+        ];
+
+        let bookings = []; 
+        const SALON_OPEN_TIME = "08:00";
+        const SALON_CLOSE_TIME = "19:00";
+        const SLOT_DURATION = 30; // en minutes
+        let bookingDetailsForModal = null; 
+        let currentDisplayedStartDate = new Date(); // Date de début de la semaine affichée (Lundi)
+        // Ajuster pour que currentDisplayedStartDate soit toujours le lundi de la semaine actuelle ou future.
+        const todayForInit = new Date();
+        todayForInit.setHours(0,0,0,0);
+        currentDisplayedStartDate.setDate(todayForInit.getDate() - todayForInit.getDay() + (todayForInit.getDay() === 0 ? -6 : 1));
+        currentDisplayedStartDate.setHours(0, 0, 0, 0);
+
+
+        function generateTimesForDay(startTime, endTime, interval) {
+            const times = [];
+            let currentTime = new Date(`1970-01-01T${startTime}:00Z`);
+            const lastTime = new Date(`1970-01-01T${endTime}:00Z`);
+            while (currentTime < lastTime) {
+                const hours = String(currentTime.getUTCHours()).padStart(2, '0');
+                const minutes = String(currentTime.getUTCMinutes()).padStart(2, '0');
+                times.push(`${hours}:${minutes}`);
+                currentTime.setUTCMinutes(currentTime.getUTCMinutes() + interval);
+            }
+            return times;
+        }
+
+        const allPossibleSalonSlots = generateTimesForDay(SALON_OPEN_TIME, SALON_CLOSE_TIME, SLOT_DURATION);
+
+        function timeToMinutes(timeStr) {
+            const [hours, minutes] = timeStr.split(':').map(Number);
+            return hours * 60 + minutes;
+        }
+
+        function updateWeekDisplayAndNavButtons(startDate) {
+            const endDate = new Date(startDate);
+            endDate.setDate(startDate.getDate() + 6);
+            const options = { day: 'numeric', month: 'long', year: 'numeric' };
+            document.getElementById('currentWeekDisplay').textContent = 
+                `Semaine du ${startDate.toLocaleDateString('fr-FR', options)} au ${endDate.toLocaleDateString('fr-FR', options)}`;
+
+            // Désactiver le bouton "Précédent" si la semaine affichée est la semaine actuelle ou dans le passé
+            const today = new Date();
+            today.setHours(0,0,0,0); // Normaliser l'heure pour la comparaison
+            const mondayOfCurrentWeek = new Date(today);
+            mondayOfCurrentWeek.setDate(today.getDate() - today.getDay() + (today.getDay() === 0 ? -6 : 1)); // Lundi de la semaine actuelle
+
+            document.getElementById('prevWeekBtn').disabled = startDate <= mondayOfCurrentWeek;
+        }
+
+        function renderWeekCalendar(startDate, selectedHairdresserId = null) {
+            updateWeekDisplayAndNavButtons(startDate);
+            const calendarContainer = document.getElementById('calendar-container');
+            calendarContainer.innerHTML = ''; 
+
+            const weekDates = [];
+            for (let i = 0; i < 7; i++) {
+                const date = new Date(startDate);
+                date.setDate(startDate.getDate() + i);
+                weekDates.push(date);
+            }
+
+            const table = document.createElement('table');
+            table.className = 'min-w-full divide-y divide-gray-300 border border-gray-300 rounded-lg';
+            const thead = document.createElement('thead');
+            thead.className = 'bg-gray-100';
+            const headerRow = document.createElement('tr');
+            
+            const thTime = document.createElement('th');
+            thTime.className = 'px-3 py-4 text-left text-xs sm:text-sm font-semibold text-gray-800 uppercase tracking-wider';
+            thTime.textContent = 'Heure';
+            headerRow.appendChild(thTime);
+
+            weekDates.forEach(date => {
+                const thDay = document.createElement('th');
+                thDay.className = 'px-2 py-4 text-center text-xs sm:text-sm font-semibold text-gray-800 uppercase tracking-wider';
+                thDay.innerHTML = `${date.toLocaleDateString('fr-FR', { weekday: 'short' })}<br class="hidden sm:block">${date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}`;
+                headerRow.appendChild(thDay);
+            });
+            thead.appendChild(headerRow);
+            table.appendChild(thead);
+
+            const tbody = document.createElement('tbody');
+            tbody.className = 'divide-y divide-gray-200 bg-white';
+
+            const selectedHairdresser = selectedHairdresserId ? hairdressers.find(h => h.id === parseInt(selectedHairdresserId)) : null;
+            const now = new Date(); // Heure actuelle pour la vérification des créneaux passés
+
+            allPossibleSalonSlots.forEach(timeSlot => {
+                const slotRow = document.createElement('tr');
+                slotRow.className = 'hover:bg-gray-50 transition-colors duration-150';
+                const tdTime = document.createElement('td');
+                tdTime.className = 'whitespace-nowrap px-3 py-3 text-sm text-gray-700 font-medium';
+                tdTime.textContent = timeSlot;
+                slotRow.appendChild(tdTime);
+
+                weekDates.forEach(date => {
+                    const tdSlot = document.createElement('td');
+                    tdSlot.className = 'whitespace-nowrap p-1 text-center'; 
+                    
+                    const dayOfWeek = date.getDay(); 
+                    let isAvailable = false;
+                    let hairdresserWorksThisDay = false;
+                    let slotIsWithinWorkingHours = false;
+                    let isPastSlot = false;
+
+                    const dateString = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+                    
+                    // Vérifier si le créneau est dans le passé
+                    const slotDateTime = new Date(date);
+                    const [hours, minutes] = timeSlot.split(':').map(Number);
+                    slotDateTime.setHours(hours, minutes, 0, 0);
+                    if (slotDateTime < now) {
+                        isPastSlot = true;
+                    }
+
+                    if (selectedHairdresser && !isPastSlot) { // On ne vérifie la dispo que si ce n'est pas passé
+                        const dailySchedule = selectedHairdresser.workingHours.find(wh => wh.dayOfWeek === dayOfWeek);
+                        if (dailySchedule) {
+                            hairdresserWorksThisDay = true;
+                            const slotStartMinutes = timeToMinutes(timeSlot);
+                            const workStartMinutes = timeToMinutes(dailySchedule.startTime);
+                            const workEndMinutes = timeToMinutes(dailySchedule.endTime);
+
+                            if (slotStartMinutes >= workStartMinutes && slotStartMinutes < workEndMinutes) {
+                                slotIsWithinWorkingHours = true;
+                                const isBooked = bookings.some(b =>
+                                    b.hairdresserId === selectedHairdresser.id &&
+                                    b.date === dateString &&
+                                    b.time === timeSlot
+                                );
+                                if (!isBooked) {
+                                    isAvailable = true;
+                                }
+                            }
+                        }
+                    }
+
+                    const slotButton = document.createElement('button');
+                    slotButton.type = 'button';
+                    slotButton.className = 'w-full h-10 rounded-md text-xs font-medium shadow-sm slot-button';
+
+                    if (isPastSlot) {
+                        slotButton.textContent = 'Passé';
+                        slotButton.disabled = true;
+                        slotButton.classList.add('slot-past');
+                    } else if (!selectedHairdresser) {
+                        slotButton.textContent = '-';
+                        slotButton.disabled = true;
+                        slotButton.classList.add('slot-disabled-selection');
+                    } else if (!hairdresserWorksThisDay || !slotIsWithinWorkingHours) {
+                        slotButton.innerHTML = '&nbsp;'; // ou 'X'
+                        slotButton.disabled = true;
+                        slotButton.classList.add('slot-unavailable');
+                    } else if (isAvailable) {
+                        slotButton.textContent = 'Libre';
+                        slotButton.classList.add('slot-available');
+                        slotButton.onclick = () => showBookingModal(selectedHairdresser.id, selectedHairdresser.name, date, timeSlot);
+                    } else { 
+                        slotButton.textContent = 'Pris';
+                        slotButton.disabled = true;
+                        slotButton.classList.add('slot-booked');
+                    }
+                    tdSlot.appendChild(slotButton);
+                    slotRow.appendChild(tdSlot);
+                });
+                tbody.appendChild(slotRow);
+            });
+
+            table.appendChild(tbody);
+            calendarContainer.appendChild(table);
+        }
+
+        function showBookingModal(hairdresserId, hairdresserName, dateObject, timeSlot) {
+            bookingDetailsForModal = {
+                hairdresserId,
+                hairdresserName,
+                date: `${dateObject.getFullYear()}-${String(dateObject.getMonth() + 1).padStart(2, '0')}-${String(dateObject.getDate()).padStart(2, '0')}`,
+                time: timeSlot,
+                displayDate: dateObject.toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
+            };
+
+            const modal = document.getElementById('bookingModal');
+            const modalText = document.getElementById('modalText');
+            modalText.textContent = `Confirmer la réservation avec ${hairdresserName} le ${bookingDetailsForModal.displayDate} à ${timeSlot} ?`;
+            modal.classList.remove('hidden');
+        }
+
+        function closeBookingModal() {
+            document.getElementById('bookingModal').classList.add('hidden');
+            bookingDetailsForModal = null;
+        }
+
+        function confirmBooking() {
+            if (bookingDetailsForModal) {
+                bookings.push({
+                    hairdresserId: bookingDetailsForModal.hairdresserId,
+                    date: bookingDetailsForModal.date,
+                    time: bookingDetailsForModal.time
+                });
+                closeBookingModal();
+                
+                const selectedHairdresserId = getSelectedHairdresserId();
+                renderWeekCalendar(currentDisplayedStartDate, selectedHairdresserId);
+                
+                const messageArea = document.getElementById('messageArea');
+                messageArea.innerHTML = `<div class="p-4 bg-green-100 text-green-700 rounded-lg shadow-md">${bookingDetailsForModal.hairdresserName} confirmé(e) pour le ${bookingDetailsForModal.displayDate} à ${bookingDetailsForModal.time}.</div>`;
+                setTimeout(() => { messageArea.innerHTML = ''; }, 5000);
+            }
+        }
+
+        function getSelectedHairdresserId() {
+            const selectedRadio = document.querySelector('input[name="hairdresser"]:checked');
+            return selectedRadio ? selectedRadio.value : null;
+        }
+
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const radioContainer = document.getElementById('hairdresserRadioContainer');
+            
+            hairdressers.forEach(h => {
+                const label = document.createElement('label');
+                label.className = 'hairdresser-radio-label';
+                
+                const radioInput = document.createElement('input');
+                radioInput.type = 'radio';
+                radioInput.name = 'hairdresser';
+                radioInput.value = h.id;
+                radioInput.className = 'focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300';
+
+                const img = document.createElement('img');
+                img.src = h.imageUrl;
+                img.alt = `Photo de ${h.name}`;
+                img.onerror = function() {
+                    this.onerror=null; 
+                    this.src='https://placehold.co/50x50/CCCCCC/B0B0B0?text=Img&font=Inter'; 
+                    console.warn(`Image non trouvée pour ${h.name}, utilisation d'un placeholder de secours.`);
+                };
+
+                const nameSpan = document.createElement('span');
+                nameSpan.textContent = h.name;
+                nameSpan.className = "text-gray-700 font-medium";
+
+                label.appendChild(radioInput);
+                label.appendChild(img);
+                label.appendChild(nameSpan);
+                radioContainer.appendChild(label);
+
+                radioInput.addEventListener('change', (event) => {
+                    document.querySelectorAll('.hairdresser-radio-label').forEach(l => l.classList.remove('selected'));
+                    if (event.target.checked) {
+                        label.classList.add('selected');
+                        renderWeekCalendar(currentDisplayedStartDate, event.target.value);
+                    }
+                    document.getElementById('messageArea').innerHTML = '';
+                });
+            });
+
+            document.getElementById('prevWeekBtn').addEventListener('click', () => {
+                const newStartDate = new Date(currentDisplayedStartDate);
+                newStartDate.setDate(currentDisplayedStartDate.getDate() - 7);
+                
+                // Empêcher de naviguer avant la semaine actuelle
+                const today = new Date();
+                today.setHours(0,0,0,0);
+                const mondayOfCurrentWeek = new Date(today);
+                mondayOfCurrentWeek.setDate(today.getDate() - today.getDay() + (today.getDay() === 0 ? -6 : 1));
+
+                if (newStartDate >= mondayOfCurrentWeek) {
+                    currentDisplayedStartDate = newStartDate;
+                    renderWeekCalendar(currentDisplayedStartDate, getSelectedHairdresserId());
+                } else {
+                    // Optionnel: garder currentDisplayedStartDate sur la semaine actuelle si on essaie d'aller avant
+                    currentDisplayedStartDate = mondayOfCurrentWeek;
+                    renderWeekCalendar(currentDisplayedStartDate, getSelectedHairdresserId());
+                }
+            });
+
+            document.getElementById('nextWeekBtn').addEventListener('click', () => {
+                currentDisplayedStartDate.setDate(currentDisplayedStartDate.getDate() + 7);
+                renderWeekCalendar(currentDisplayedStartDate, getSelectedHairdresserId());
+            });
+
+            document.getElementById('confirmBookingBtn').addEventListener('click', confirmBooking);
+            document.getElementById('cancelBookingBtn').addEventListener('click', closeBookingModal);
+
+            // Affichage initial
+             const initialHairdresserId = getSelectedHairdresserId();
+            if (!initialHairdresserId) {
+                 document.getElementById('calendar-container').innerHTML = '<p class="p-6 text-center text-gray-500">Veuillez sélectionner un coiffeur pour afficher les disponibilités.</p>';
+            } else {
+                renderWeekCalendar(currentDisplayedStartDate, initialHairdresserId);
+            }
+            updateWeekDisplayAndNavButtons(currentDisplayedStartDate); // Mettre à jour l'affichage et les boutons dès le début
+        });
+
+    </script>
+</body>
+</html>
